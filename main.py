@@ -3,69 +3,35 @@ import sys
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Gtk, Adw, GLib, Gio
 
 class Note():
-  def __init__(self, fileName):
+  def __init__(self, filePath):
     self.contents = ""
-    self.fileName = fileName
+    self.filePath = filePath
 
   def edit(self, contents):
     self.contents = contents
 
   def save(self):
-    f = open(self.fileName, "w")
+    f = open(self.filePath, "w")
     f.write(self.contents)
     f.close()
 
-  def saveAs(self, fileName):
-    self.fileName = fileName
+  def saveAs(self, filePath):
+    self.filePath = filePath
     self.save()
 
   def load(self):
-    f = open(self.fileName, "r")
+    f = open(self.filePath, "r")
     self.contents = f.read()
     f.close()
 
-class NoteManager:
-  def __init__(self):
-    configFile = ".notes"
-    notes = []
-    if os.path.isfile(configFile):
-      f = open(configFile, "r")
-      for line in f:
-        line = line.strip('\n')
-        note = Note(line)
-        note.load()
-        notes.append(note)
-      f.close()
-    else:
-      f = open(configFile, "x")
-      f.close()
-
-    self.notes = notes
-    self.configFile = configFile
-
-  def addToConfig(self, note):
-    f = open(self.configFile, "a")
-    f.write(f'{note.fileName}\n')
-    f.close()
-
-  def newNote(self, fileName, contents):
-    note = Note(fileName)
-    note.edit(contents)
-    note.save()
-    self.notes.append(note)
-    self.addToConfig(note)
-    
-  def editNote(self, fileName, newContents):
-    note = next(filter(lambda note: note.fileName == fileName, self.notes))
-    note.edit(newContents)
-    note.save()
 
 class NoteWindow(Gtk.ApplicationWindow):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+
     self.set_default_size(800, 600)
     self.set_title("Notes")
 
@@ -80,6 +46,13 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.header.pack_start(self.open_button)
     self.open_button.connect('clicked', self.show_open_dialog)
 
+    # Save file button
+    self.save_dialog = Gtk.FileDialog.new()
+    self.save_dialog.set_title("Select a File") 
+    self.button = Gtk.Button(label="Save As")
+    self.button.connect('clicked', self.show_save_dialog)
+    self.header.pack_start(self.button)
+
     # Main box layout
     self.box1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
     self.box2 = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -87,10 +60,6 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.set_child(self.box1)
     self.box1.append(self.box2)  
     self.box1.append(self.box3)
-
-    self.button = Gtk.Button(label="Hello")
-    self.button.connect('clicked', self.hello)
-    self.box2.append(self.button)
 
     # Text Box
     self.text = Gtk.TextView.new()
@@ -101,36 +70,51 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.textbuffer.set_text("Hi")
 
     self.box3.append(self.text)
-    
 
-  def hello(self, button):
-    print(self.textbuffer.get_text(self.textbuffer.get_bounds().start, self.textbuffer.get_bounds().end, False))
+  def get_current_buffer(self):
+    bounds = self.textbuffer.get_bounds()
+    return self.textbuffer.get_text(bounds.start, bounds.end, False)
 
   def show_open_dialog(self, button):
-    self.open_dialog.open(self, None, self.open_dialog_open_callback)
-        
-  def open_dialog_open_callback(self, dialog, result):
-      try:
-          file = dialog.open_finish(result)
-          if file is not None:
-              print(f"File path is {file.get_path()}")
-              # Handle loading file from here
-      except GLib.Error as error:
-          print(f"Error opening file: {error.message}")
+    self.open_dialog.open(self, None, self.load_selected_file)
+
+  def show_save_dialog(self, button):
+    self.save_dialog.set_initial_file(Gio.File.new_for_path(self.currentNote.filePath))
+    self.save_dialog.save(self, None, self.save_selected_file)
+
+  def load_selected_file(self, dialog, result):
+    try:
+      file = dialog.open_finish(result)
+      if file is not None:
+        print(f"File path is {file.get_path()}")
+        self.currentNote = Note(file.get_path())
+        self.currentNote.load()
+        self.textbuffer.set_text(self.currentNote.contents)
+    except GLib.Error as error:
+      print(f"Error opening file: {error.message}")
+
+  def save_selected_file(self, dialog, result):
+    try:
+      file = dialog.save_finish(result)
+      if file is not None:
+        print(f"File path is {file.get_path()}")
+        self.currentNote.edit(self.get_current_buffer())
+        self.currentNote.saveAs(file.get_path())
+    except GLib.Error as error:
+      print(f"Error opening file: {error.message}")
+
 
 class NoteAppWindow(Adw.Application):
-  def __init__(self, **kwargs):
-    super().__init__(**kwargs)
-    self.connect('activate', self.on_activate)
-
-    self.manage = NoteManager()
+  def __init__(self):
+    super().__init__()
+    self.connect('activate', self.on_activate) 
 
   def on_activate(self, app):
     self.win = NoteWindow(application=app)
     self.win.present()
 
 def main():
-  app = NoteAppWindow(application_id="com.theo.NoteApp")
+  app = NoteAppWindow()
   app.run(sys.argv)
 
 main()
