@@ -27,13 +27,13 @@ class Note():
     self.contents = f.read()
     f.close()
 
-
 class NoteWindow(Gtk.ApplicationWindow):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
     self.set_default_size(800, 600)
     self.set_title("Notes")
+    self.currentNote = None
 
     # Header Bar
     self.header = Gtk.HeaderBar()
@@ -67,7 +67,6 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.text.set_vexpand(True)
 
     self.textbuffer = self.text.get_buffer()
-    self.textbuffer.set_text("Hi")
 
     self.box3.append(self.text)
 
@@ -79,7 +78,8 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.open_dialog.open(self, None, self.load_selected_file)
 
   def show_save_dialog(self, button):
-    self.save_dialog.set_initial_file(Gio.File.new_for_path(self.currentNote.filePath))
+    if(self.currentNote):
+      self.save_dialog.set_initial_file(Gio.File.new_for_path(self.currentNote.filePath))
     self.save_dialog.save(self, None, self.save_selected_file)
 
   def load_selected_file(self, dialog, result):
@@ -98,11 +98,12 @@ class NoteWindow(Gtk.ApplicationWindow):
       file = dialog.save_finish(result)
       if file is not None:
         print(f"File path is {file.get_path()}")
-        self.currentNote.edit(self.get_current_buffer())
+        if(not self.currentNote):
+          self.currentNote = Note(file.get_path())
+        self.currentNote.edit(self.get_current_buffer() + "\n")
         self.currentNote.saveAs(file.get_path())
     except GLib.Error as error:
       print(f"Error opening file: {error.message}")
-
 
 class NoteAppWindow(Adw.Application):
   def __init__(self):
