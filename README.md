@@ -8,7 +8,7 @@ This project requires PyGObject. To install, follow the [installation instructio
 ## Running
 To run, first clone the repository 
 For Windows:
-Once msys2 has been installed, copy main.py to C:\msys64\home\<username>\  
+Once msys2 has been installed, copy main.py to C:\msys64\home\\<username>\  
 Run the mingw32 terminal and run 
 ```
 $ python3 main.py
