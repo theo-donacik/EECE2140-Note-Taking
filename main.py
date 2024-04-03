@@ -39,12 +39,13 @@ class NoteWindow(Gtk.ApplicationWindow):
 
     self.set_default_size(800, 600)
     self.set_title("Editor")
+    self.font_size = 30
     self.currentNote = None
 
     # Header Bar
     self.header = Gtk.HeaderBar()
     self.set_titlebar(self.header)
-
+    
     # Open file button
     self.open_dialog = Gtk.FileDialog.new()
     self.open_dialog.set_title("Select a File")
@@ -58,6 +59,16 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.button = Gtk.Button(label="Save As")
     self.button.connect('clicked', self.show_save_dialog)
     self.header.pack_start(self.button)
+
+    # Zoom in button
+    self.zoom_button = Gtk.Button(label="+")
+    self.zoom_button.connect('clicked', self.zoom_font, 2)
+    self.header.pack_start(self.zoom_button)
+
+    # Zoom Out button
+    self.zoom_button = Gtk.Button(label="-")
+    self.zoom_button.connect('clicked', self.zoom_font, -2)
+    self.header.pack_start(self.zoom_button)
 
     # Main box layout
     self.box1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -73,8 +84,10 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.text = Gtk.TextView.new()
     self.text.set_hexpand(True)
     self.text.set_vexpand(True)
-    self.textbuffer = self.text.get_buffer()
+    self.textbuffer = self.text.get_buffer() 
+    self.font_tag = self.textbuffer.create_tag('font_size'+str(self.font_size), size_points=self.font_size)
     self.scrollable.set_child(self.text)
+    self.textbuffer.connect("changed", self.changeHandler)
 
   # Gets the buffer stored in the text input 
   def get_current_buffer(self):
@@ -90,6 +103,21 @@ class NoteWindow(Gtk.ApplicationWindow):
     if(self.currentNote):
       self.save_dialog.set_initial_file(Gio.File.new_for_path(self.currentNote.filePath))
     self.save_dialog.save(self, None, self.save_selected_file)
+
+  # Applies the current font size to all text
+  def apply_font_size(self):
+    bounds = self.textbuffer.get_bounds()
+    self.textbuffer.apply_tag(self.font_tag, bounds.start, bounds.end)
+
+  # Scales the font based on the given size
+  def zoom_font(self, button, size):
+    self.font_size = max(self.font_size + size, 0)
+    self.font_tag.set_property('size-points', self.font_size+1)
+    self.changeHandler(self)
+
+  # Function called on every change to the textbuffer
+  def changeHandler(self, window):
+    self.apply_font_size()
 
   # Loads a file selected by the open file chooser
   def load_selected_file(self, dialog, result):
