@@ -54,6 +54,11 @@ class NoteWindow(Gtk.ApplicationWindow):
     self.open_button.connect('clicked', self.show_open_dialog)
 
     # Save file button
+    self.save_button = Gtk.Button(label="Save")
+    self.save_button.connect('clicked', self.save_note)
+    self.header.pack_start(self.save_button)
+
+    # Save as file button
     self.save_dialog = Gtk.FileDialog.new()
     self.save_dialog.set_title("Select a File") 
     self.button = Gtk.Button(label="Save As")
@@ -63,12 +68,12 @@ class NoteWindow(Gtk.ApplicationWindow):
     # Zoom in button
     self.zoom_button = Gtk.Button(label="+")
     self.zoom_button.connect('clicked', self.zoom_font, 2)
-    self.header.pack_start(self.zoom_button)
+    self.header.pack_end(self.zoom_button)
 
     # Zoom Out button
     self.zoom_button = Gtk.Button(label="-")
     self.zoom_button.connect('clicked', self.zoom_font, -2)
-    self.header.pack_start(self.zoom_button)
+    self.header.pack_end(self.zoom_button)
 
     # Main box layout
     self.box1 = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -145,6 +150,16 @@ class NoteWindow(Gtk.ApplicationWindow):
         self.currentNote.saveAs(file.get_path())
     except GLib.Error as error: 
       print(f"Error opening file: {error.message}")
+
+  def save_note(self, button):
+    if(self.currentNote):
+      self.currentNote.edit(self.get_current_buffer() + "\n")
+      self.currentNote.save()
+    else:
+      self.alert = Gtk.AlertDialog()
+      self.alert.set_message("No current file loaded")
+      self.alert.set_buttons(["OK"])
+      self.alert.choose()
 
 # The main window wrapper to start the application
 class NoteAppWindow(Adw.Application):
